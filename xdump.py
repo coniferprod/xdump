@@ -5,54 +5,52 @@ import sys
 BYTES_PER_LINE = 16
 SPACE = ' '
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+def make_line(data, offset, options):
+    bytes_per_line = options['bytes_per_line']
+    lowercase = options['lowercase']
+
+    line = f'{offset:010}: '
+
+    bytes_done = 0
+    characters = SPACE
+    for b in data:
+        line += f'{b:02x} ' if lowercase else f'{b:02X} '
+        offset += 1
+        bytes_done += 1
+
+        ch = chr(b)
+        characters += ch if ch.isprintable() else '.'
+
+    # All data processed, output whitespace to fill out the line
+    # if there were less bytes than the full amount.
+    while bytes_done < bytes_per_line:
+        line += SPACE*3  # for each missing byte
+        characters += SPACE
+        bytes_done += 1
+
+    line += characters
+    return line
+
+def dump(data, options):
+    bytes_per_line = options['bytes_per_line']
+    line_data = chunks(data, bytes_per_line)
+
+    offset = 0
+    for ld in line_data:
+        line = make_line(ld, offset, options)
+        print(line)
+        offset += bytes_per_line
+
 def run(filename, options):
     with open(filename, 'rb') as f:
         data = f.read()
 
-    counter = 0
-    bytes_done = 0
-    print(f'{counter:010}: ', end='')
-
-    bytes_per_line = options['bytes_per_line']
-    gap = options['gap']
-    lowercase = options['lowercase']
-
-    characters = ''
-    for b in data:
-        if lowercase:
-            print(f'{b:02x} ', end='')
-        else:
-            print(f'{b:02X} ', end='')
-        counter += 1
-        bytes_done += 1
-
-        ch = chr(b)
-        if ch.isprintable():
-            characters += ch
-        else:
-            characters += '.'
-
-        if gap:
-            if bytes_done == bytes_per_line // 2:
-                print(SPACE, end='')
-                characters += SPACE
-        if bytes_done % bytes_per_line == 0:
-            print(f'  {characters}')
-            bytes_done = 0
-            characters = ''
-            print(f'{counter:010}: ', end='')
-
-    # All data processed, output whitespace to fill out the line,
-    # and then output the rest of the characters.
-    while bytes_done < bytes_per_line:
-        #print(f'bytes_done = {bytes_done} ')
-        print(SPACE*3, end='')
-        bytes_done += 1
-    else:
-        if gap:
-            print(SPACE, end='')
-    print(f'  {characters}')
-    # TODO: Something is off with the gap.
+    dump(data, options)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -60,5 +58,5 @@ if __name__ == '__main__':
         sys.exit(1)
     
     filename = sys.argv[1]
-    options = {'bytes_per_line': BYTES_PER_LINE, 'gap': True, 'lowercase': True}
+    options = {'bytes_per_line': BYTES_PER_LINE, 'lowercase': False}
     run(filename, options)
